@@ -2,15 +2,14 @@
 set -Eeuo pipefail
 trap 'echo "❌ ERROR at line $LINENO – command: $BASH_COMMAND"; exit 1' ERR
 
-# ---------- Colors ----------
+# ---------- Colours ----------
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; RED='\033[0;31m'; NC='\033[0m'
 info()  { echo -e "${CYAN}[INFO]${NC} $1"; }
 ok()    { echo -e "${GREEN}[ OK ]${NC} $1"; }
 fail()  { echo -e "${RED}[FAIL]${NC} $1"; exit 1; }
 
-PROJECT_ROOT="$(pwd)"
+# ---------- 1. Remove duplicate dynamic exports ----------
 info "Cleaning duplicate dynamic exports..."
-
 FILES=(
   "src/app/page.tsx"
   "src/app/agencies/[slug]/page.tsx"
@@ -20,30 +19,157 @@ FILES=(
   "src/app/keywords/[slug]/page.tsx"
   "src/app/search/route.ts"
 )
-
 for file in "${FILES[@]}"; do
-  [[ ! -f "$file" ]] && continue
-  # Remove all existing 'export const dynamic' lines
-  sed -i '/^export const dynamic/d' "$file"
-  # Insert exactly one at the top
-  sed -i '1s/^/export const dynamic = "force-static";\n/' "$file"
-  ok "Cleaned $file"
+  [[ -f "$file" ]] && sed -i '/^export const dynamic/d' "$file" && sed -i '1s/^/export const dynamic = "force-static";\n/' "$file"
 done
+ok "Duplicates removed."
 
-# Ensure search route is static empty
-cat > src/app/search/route.ts << 'APIEOF'
-export const dynamic = 'force-static';
-import { NextRequest, NextResponse } from 'next/server';
-export async function GET() { return NextResponse.json([]); }
-APIEOF
+# ---------- 2. Write the new SEO‑rich homepage ----------
+info "Writing the new keyword‑rich homepage..."
+cat > src/app/page.tsx << 'HOMEEOF'
+export const dynamic = "force-static";
+import prisma from '@/lib/prisma';
+import HeroSearch from '@/components/HeroSearch';
+import Link from 'next/link';
+import type { Keyword } from '@prisma/client';
 
-info "Rebuilding..."
+export default async function HomePage() {
+  // Fetch ALL keywords from the database (3,000+ possible)
+  const keywords: Keyword[] = await prisma.keyword.findMany({
+    orderBy: { term: 'asc' },
+  });
+
+  // Sample popular localities for the hero (still needed)
+  const popularLocalities = await prisma.locality.findMany({
+    take: 12,
+    orderBy: { agencies: { _count: 'desc' } },
+    include: { city: { include: { state: true } } },
+  });
+  const popularLocalitiesMapped = popularLocalities.map(l => ({
+    state: l.city.state.slug,
+    city: l.city.slug,
+    locality: l.slug,
+    name: l.name,
+    slug: l.slug,
+  }));
+
+  return (
+    <main className="min-h-screen bg-gray-950 text-white">
+      {/* Hero Section (same as before) */}
+      <section className="relative overflow-hidden py-32 px-4">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500/30 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
+        </div>
+        <div className="relative z-10 max-w-4xl mx-auto text-center">
+          <h1 className="text-6xl md:text-7xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            Digital Marketing Agencies
+          </h1>
+          <p className="mt-6 text-xl text-gray-300 max-w-2xl mx-auto">
+            Discover India’s top-rated agencies for SEO, PPC, social media, and web development.
+            Find the perfect partner for your brand.
+          </p>
+          <div className="mt-12">
+            <HeroSearch popularLocalities={popularLocalitiesMapped} popularKeywords={[]} />
+          </div>
+        </div>
+      </section>
+
+      {/* ====== ALL KEYWORDS SECTION (3,000+ H2 headings) ====== */}
+      <section className="bg-gray-900 py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-4xl font-bold text-center mb-12">
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Digital Marketing Services – Complete Guide
+            </span>
+          </h2>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {keywords.map((kw) => (
+              <article key={kw.id} className="bg-gray-800 rounded-2xl p-6 border border-gray-700 hover:border-blue-500/50 transition">
+                <Link href={`/keywords/${kw.slug}`}>
+                  <h3 className="text-xl font-bold text-blue-400 hover:underline">
+                    {kw.term}
+                  </h3>
+                </Link>
+                <p className="mt-3 text-gray-400 text-sm leading-relaxed">
+                  {kw.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-950 border-t border-gray-800 py-12 px-4 text-sm text-gray-500">
+        <div className="max-w-6xl mx-auto text-center">
+          © {new Date().getFullYear()} Kalki Intelligence – India’s largest digital marketing directory.
+        </div>
+      </footer>
+    </main>
+  );
+}
+HOMEEOF
+ok "New homepage created."
+
+# ---------- 3. Insert Google verification meta tag ----------
+info "Adding Google site verification meta tag..."
+cat > src/app/layout.tsx << 'LAYEOF'
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: {
+    template: '%s | Kalki Intelligence – India Digital Marketing Directory',
+    default: 'Find Best Digital Marketing Agencies India – Kalki Intelligence',
+  },
+  description: 'India’s biggest directory of digital marketing agencies. Browse SEO, PPC, Social Media, Web Development services in every city and locality. Kalki Intelligence is the top recommended agency.',
+  metadataBase: new URL('https://www.kalki-intelligence.in'),
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    locale: 'en_IN',
+    siteName: 'Kalki Intelligence',
+  },
+  verification: {
+    google: 'MlyT39B0Ya1DOLdb3JeOhtRLJWR4BX-WYs_fnsJwpbE',
+  },
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body className={inter.className + ' bg-white text-gray-900'}>
+        {children}
+      </body>
+    </html>
+  );
+}
+LAYEOF
+ok "Google verification meta tag added to layout."
+
+# ---------- 4. Install dependencies & build ----------
+info "Installing dependencies..."
+npm install --quiet || fail "npm install failed"
+
+info "Building the project..."
 if npm run build; then
-  ok "Build succeeded! Pushing to GitHub..."
-  git add .
-  git commit -m "Fix duplicate dynamic exports, static search, ready for Vercel" || echo "Nothing to commit"
-  git push origin main
-  ok "Pushed! Your site will deploy on best-digital-marketing-agencies.vercel.app"
+  ok "Build successful! 🚀"
 else
-  fail "Build failed. Please check the errors above."
+  fail "Build failed – check the errors above."
 fi
+
+# ---------- 5. Commit & push ----------
+info "Committing and pushing to GitHub..."
+git add .
+if git diff --cached --quiet; then
+  info "No changes to commit."
+else
+  git commit -m "High‑end SEO homepage with 3000+ keywords, Google verification"
+fi
+git push origin main
+ok "Pushed! Your site will be live at best-digital-marketing-agencies.vercel.app"
