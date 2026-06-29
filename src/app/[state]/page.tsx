@@ -1,8 +1,8 @@
+export const dynamic = "force-static";
 import { getStateMeta, getCitiesByState, getStateSlugs } from '@/lib/data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-export const dynamic = "force-static";
 
 export async function generateStaticParams() {
   const slugs = await getStateSlugs();
