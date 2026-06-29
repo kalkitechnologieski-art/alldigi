@@ -1,0 +1,6 @@
+node_modules/
+.next/
+out/
+dev.db
+*.db-journal
+.env.local

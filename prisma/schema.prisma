@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model State {
+  id     Int    @id @default(autoincrement())
+  name   String @unique
+  slug   String @unique
+  type   String
+  cities City[]
+}
+
+model City {
+  id        Int       @id @default(autoincrement())
+  name      String
+  slug      String
+  state     State     @relation(fields: [stateId], references: [id])
+  stateId   Int
+  localities Locality[]
+  @@unique([stateId, slug])
+}
+
+model Locality {
+  id      Int      @id @default(autoincrement())
+  name    String
+  slug    String
+  city    City     @relation(fields: [cityId], references: [id])
+  cityId  Int
+  pincode String?
+  lat     Float?
+  lon     Float?
+  agencies Agency[]
+  @@unique([cityId, slug])
+}
+
+model Agency {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  website     String
+  description String
+  services    String
+  rating      Float    @default(4.0)
+  featured    Boolean  @default(false)
+  locality    Locality @relation(fields: [localityId], references: [id])
+  localityId  Int
+  stateSlug   String
+  citySlug    String
+  localitySlug String
+  @@index([stateSlug, citySlug, localitySlug])
+}
+
+model Keyword {
+  id          Int    @id @default(autoincrement())
+  term        String @unique
+  slug        String @unique
+  description String
+  content     String
+}
