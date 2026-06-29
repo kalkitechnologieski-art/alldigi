@@ -5,7 +5,7 @@ export async function GET() {
   const baseUrl = 'https://www.kalki-intelligence.in';
   const states = await getStateSlugs();
   const cities = await getCitySlugs();
-  const localities = await getLocalitySlugs();
+  const localities = await getLocalitySlugs();  // ALL localities
   const agencies = await getAgencySlugs();
   const keywords = await getKeywordSlugs();
 
@@ -14,7 +14,7 @@ export async function GET() {
     { loc: `${baseUrl}/global`, priority: 0.9 },
     ...states.map(s => ({ loc: `${baseUrl}/${s}`, priority: 0.8 })),
     ...cities.map(c => ({ loc: `${baseUrl}/${c.state}/${c.city}`, priority: 0.7 })),
-    ...localities.slice(0, 50000).map(l => ({ loc: `${baseUrl}/${l.state}/${l.city}/${l.locality}`, priority: 0.6 })),
+    ...localities.map(l => ({ loc: `${baseUrl}/${l.state}/${l.city}/${l.locality}`, priority: 0.6 })),
     ...agencies.map(a => ({ loc: `${baseUrl}/agencies/${a}`, priority: 0.5 })),
     ...keywords.map(k => ({ loc: `${baseUrl}/keywords/${k}`, priority: 0.5 })),
   ];
