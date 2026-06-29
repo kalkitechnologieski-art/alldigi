@@ -5,7 +5,6 @@ import path from 'path';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Get all localities with their city and state slugs
   const localities = await prisma.locality.findMany({
     select: {
       name: true,

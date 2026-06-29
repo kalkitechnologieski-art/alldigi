@@ -1,10 +1,10 @@
+export const dynamic = "force-static";
 import { getStateMeta, getCitiesByState, getStateSlugs } from '@/lib/data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
-export const dynamic = "force-static";
 
 export async function generateStaticParams() {
   const slugs = await getStateSlugs();
