@@ -12,9 +12,7 @@ export default function AgencyCard({ agency }: { agency: AgencyData }) {
       <p className="text-gray-400 text-sm mt-1 line-clamp-2">{agency.description}</p>
       <div className="mt-2 flex flex-wrap gap-1">
         {agency.services.map(s => (
-          <span key={s} className="bg-blue-900 text-blue-200 text-xs px-2 py-1 rounded">
-            {s}
-          </span>
+          <span key={s} className="bg-blue-900 text-blue-200 text-xs px-2 py-1 rounded">{s}</span>
         ))}
       </div>
       <span className="mt-3 inline-flex items-center text-blue-400 text-sm font-medium">
