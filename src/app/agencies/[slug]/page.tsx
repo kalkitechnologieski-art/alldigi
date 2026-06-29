@@ -1,3 +1,4 @@
+export const dynamic = "force-static";
 import { getAgencyBySlug } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { localBusinessJson } from '@/lib/structuredData';

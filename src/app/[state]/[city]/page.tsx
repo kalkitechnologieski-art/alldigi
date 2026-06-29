@@ -1,3 +1,4 @@
+export const dynamic = "force-static";
 import { getLocalitiesByCity } from '@/lib/data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';

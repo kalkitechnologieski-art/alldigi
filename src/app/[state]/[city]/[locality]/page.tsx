@@ -1,3 +1,4 @@
+export const dynamic = "force-static";
 import { getAgenciesByLocality, getLocalityMeta } from '@/lib/data';
 import AgencyCard from '@/components/AgencyCard';
 import KalkiBanner from '@/components/KalkiBanner';

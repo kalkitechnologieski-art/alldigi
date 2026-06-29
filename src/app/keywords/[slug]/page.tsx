@@ -1,3 +1,4 @@
+export const dynamic = "force-static";
 import { getKeywordBySlug } from '@/lib/data';
 import KeywordContent from '@/components/KeywordContent';
 import { notFound } from 'next/navigation';
