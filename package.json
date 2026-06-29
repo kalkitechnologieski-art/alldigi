@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma db push && prisma db seed && npx ts-node prisma/generate-agency-json.ts && next build",
+    "build": "prisma db push && prisma db seed && npx ts-node prisma/generate-agency-json.ts && npx ts-node prisma/generate-localities-json.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -16,6 +16,7 @@
     "@turf/turf": "^7.3.5",
     "autoprefixer": "^10.4.19",
     "csv-parser": "^3.2.1",
+    "framer-motion": "^12.42.0",
     "next": "14.2.3",
     "postcss": "^8.4.38",
     "prisma": "^5.14.0",

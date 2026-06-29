@@ -1,42 +1,59 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-interface PopularLocality { state: string; city: string; locality: string; name: string; slug: string; }
-interface PopularKeyword { term: string; slug: string; }
+interface LocalityEntry {
+  locality: string;
+  localitySlug: string;
+  city: string;
+  citySlug: string;
+  state: string;
+  stateSlug: string;
+}
 
-export default function HeroSearch({
-  popularLocalities,
-  popularKeywords,
-}: {
-  popularLocalities: PopularLocality[];
-  popularKeywords: PopularKeyword[];
-}) {
+export default function HeroSearch() {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [activeCategory, setActiveCategory] = useState<'agencies' | 'keywords'>('agencies');
+  const [localities, setLocalities] = useState<LocalityEntry[]>([]);
+  const [suggestions, setSuggestions] = useState<LocalityEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
+  // Load the full locality list on mount
   useEffect(() => {
-    const controller = new AbortController();
-    const fetchSuggestions = async () => {
-      if (query.length < 2) { setSuggestions([]); return; }
-      try {
-        const res = await fetch(`/search?q=${encodeURIComponent(query)}&category=${activeCategory}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('Network error');
-        const data = await res.json();
-        setSuggestions(data);
-      } catch (err) {
-        if (!(err instanceof Error) || err.name !== 'AbortError') {
-          setSuggestions([]);
-        }
-      }
-    };
-    fetchSuggestions();
-    return () => controller.abort();
-  }, [query, activeCategory]);
+    fetch('/localities.json')
+      .then(r => r.json())
+      .then(data => setLocalities(data))
+      .catch(console.error);
+  }, []);
+
+  // Filter suggestions as user types
+  useEffect(() => {
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const q = query.toLowerCase();
+    const filtered = localities.filter(
+      l => l.locality.toLowerCase().includes(q) ||
+           l.city.toLowerCase().includes(q) ||
+           l.state.toLowerCase().includes(q)
+    ).slice(0, 8); // limit to 8 suggestions
+    setSuggestions(filtered);
+  }, [query, localities]);
+
+  // Redirect to the correct URL when a suggestion is selected
+  const handleSelect = (item: LocalityEntry) => {
+    setIsLoading(true);
+    // Build the URL: prefer locality if available, otherwise city
+    const url = item.localitySlug
+      ? `/${item.stateSlug}/${item.citySlug}/${item.localitySlug}`
+      : `/${item.stateSlug}/${item.citySlug}`;
+    router.push(url);
+    // Reset UI
+    setQuery('');
+    setSuggestions([]);
+  };
 
   return (
     <div className="relative w-full max-w-2xl mx-auto">
@@ -46,53 +63,38 @@ export default function HeroSearch({
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search agency, service, or locality..."
+          placeholder="Search a city, locality, or state..."
           className="flex-1 bg-transparent px-4 py-3 text-white placeholder-gray-400 outline-none text-lg"
-          aria-label="Search digital marketing agencies"
+          aria-label="Search location"
         />
+        {isLoading && (
+          <div className="pr-3">
+            <svg className="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+          </div>
+        )}
         <button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg hover:shadow-blue-500/25">
           Search
         </button>
       </div>
 
-      <div className="flex gap-2 mt-4 justify-center flex-wrap">
-        {['SEO', 'PPC', 'Social Media', 'Web Development', 'Ecommerce'].map(cat => (
+      {/* Animated suggestions dropdown */}
+      <div className={`absolute top-20 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-2xl shadow-2xl shadow-black/50 z-50 max-h-80 overflow-y-auto transition-all duration-300 origin-top ${suggestions.length > 0 ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'}`}>
+        {suggestions.map((item, i) => (
           <button
-            key={cat}
-            onClick={() => { setActiveCategory('agencies'); setQuery(cat); }}
-            className="px-4 py-1.5 bg-white/10 backdrop-blur-md border border-white/10 rounded-full text-sm text-gray-300 hover:bg-white/20 hover:border-blue-400/50 transition"
+            key={i}
+            onClick={() => handleSelect(item)}
+            className="block w-full text-left p-4 hover:bg-white/5 border-b border-gray-800 last:border-0 transition-colors"
           >
-            {cat}
+            <span className="text-white font-medium">{item.locality || item.city}</span>
+            <span className="text-gray-400 text-sm ml-2">
+              {item.city}, {item.state}
+            </span>
           </button>
         ))}
       </div>
-
-      {suggestions.length > 0 && (
-        <div className="absolute top-24 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border border-gray-700 rounded-2xl shadow-2xl shadow-black/50 z-20 max-h-80 overflow-y-auto">
-          {suggestions.map((item: any) => (
-            <Link
-              key={item.type + '-' + (item.slug || item.locality)}
-              href={
-                item.type === 'agency'
-                  ? `/agencies/${item.slug}`
-                  : `/${item.state}/${item.city}/${item.locality}`
-              }
-              onClick={() => setSuggestions([])}
-              className="block p-4 hover:bg-white/5 border-b border-gray-800 last:border-0 transition"
-            >
-              <span className="font-medium text-white">{item.name || item.locality}</span>
-              {item.services && (
-                <span className="text-sm text-gray-400 ml-2">
-                  ({item.services.join(', ')})
-                </span>
-              )}
-              <span className="text-xs text-blue-400 ml-2">
-                {item.type === 'agency' ? 'Agency' : 'Locality'}
-              </span>
-            </Link>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
